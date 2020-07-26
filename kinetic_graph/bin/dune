@@ -1,0 +1,4 @@
+(executable
+ (public_name kinetic_graph)
+ (name main)
+ (libraries kinetic_graph))

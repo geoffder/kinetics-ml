@@ -1,0 +1,3 @@
+(library
+ (name kinetic_graph)
+ (libraries base))
