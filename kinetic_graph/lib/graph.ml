@@ -32,7 +32,9 @@ end
 module Graph = struct
   type t = { nodes : string list; edges : Edge.t list }
 
-  let build nodes specs =
+  type specs = { names : string list; wiring : (string * float * int) list }
+
+  let build { names = nodes; wiring = specs } =
     { nodes = nodes ; edges = List.map ~f:Edge.build specs }
 
   (* First node is assumed to begin with all of the state value. *)
@@ -59,12 +61,54 @@ module Graph = struct
     |> List.fold_left ~init:state ~f:(fun m (e, d) -> do_shift m e d)
 end
 
-module Rig = struct
-  type t = { mutable dt : float }
+module Diffusion = struct
+  type t = float list
 
-  let config = { dt = 0.1 }
+  type spec2D = { n_mols : float
+                ; coef : float
+                ; height : float
+                ; radius : float
+                }
+
+  type spec3D = { n_mols : float
+                ; coef : float
+                ; radius : float
+                ; alpha : float
+                ; lambda : float
+                }
+
+  type space = TwoD of spec2D | ThreeD of spec3D
+
+  let calc2D { n_mols = m; coef = d; height = h; radius = r } = fun t ->
+    let moles = m /. (6.02 *. 10. **. 23.) in
+    let d' = d *. t in
+    let x = moles /. (4. *. h *. Float.pi *. d') in
+    let y = Float.exp ((-.r) **. 2. /. (4. *. d')) in
+    x *. y
+
+  let calc3D { n_mols = m; coef = d; radius = r; alpha = a; lambda = l } = fun t ->
+    let moles = m /. (6.02 *. 10. **. 23.) in
+    let d' = t *. (d /. l **. 2.) in
+    let x = moles /. (8. *. a *. (Float.pi *. d') **. 1.5 ) in
+    let y = Float.exp ((-.r) **. 2. /. (4. *. d)) in
+    x *. y
+
+  let get_profile space_spec tstop dt =
+    let f = function
+      | TwoD spec -> calc2D spec
+      | ThreeD spec -> calc3D spec in
+    Sequence.range 1 (Int.of_float (tstop /. dt))
+    |> Sequence.map ~f:(fun t -> t |> Float.of_int |> f space_spec)
+    |> Sequence.to_list
+
 end
 
-class rig step = object
-  val dt = step
+module Rig = struct
+  type t = { tstop : float; dt : float; graph : Graph.t; agonist : float list }
+
+  let build tstop dt graph_specs = { tstop = tstop
+                                   ; dt = dt
+                                   ; graph = Graph.build graph_specs
+                                   ; agonist = []
+                                   }
 end
