@@ -50,7 +50,7 @@ module Graph = struct
   let shifts dt agonist flows state =
     List.map ~f:(fun f -> f state dt agonist) flows
 
-  let apply state edges deltas =
+  let apply edges state deltas =
     let updater d = function
       | None -> 0.
       | Some s -> s +. d |> Float.clamp_exn ~min:0. ~max:1. in
@@ -59,6 +59,10 @@ module Graph = struct
       |> fun m -> Map.update m e.from ~f:(updater ((-1.) *. d)) in
     List.zip_exn edges deltas
     |> List.fold_left ~init:state ~f:(fun m (e, d) -> do_shift m e d)
+
+  let step dt edges flows agonist state =
+    shifts dt agonist flows state
+    |> apply edges state
 end
 
 module Diffusion = struct
@@ -93,22 +97,42 @@ module Diffusion = struct
     let y = Float.exp ((-.r) **. 2. /. (4. *. d)) in
     x *. y
 
-  let get_profile space_spec tstop dt =
-    let f = function
+  let get_profile space_spec time =
+    let calc = match space_spec with
       | TwoD spec -> calc2D spec
       | ThreeD spec -> calc3D spec in
-    Sequence.range 1 (Int.of_float (tstop /. dt))
-    |> Sequence.map ~f:(fun t -> t |> Float.of_int |> f space_spec)
-    |> Sequence.to_list
-
+    List.map ~f:calc time
 end
 
 module Rig = struct
-  type t = { tstop : float; dt : float; graph : Graph.t; agonist : float list }
+  type t = { tstop : float
+           ; dt : float
+           ; time : float list
+           ; graph : Graph.t
+           ; agonist : float list
+           }
 
-  let build tstop dt graph_specs = { tstop = tstop
-                                   ; dt = dt
-                                   ; graph = Graph.build graph_specs
-                                   ; agonist = []
-                                   }
+  let time_wave tstop dt =
+    Sequence.range 1 (tstop /. dt |> Int.of_float)
+    |> Sequence.map ~f:(Float.of_int |> Fn.compose (( *. ) dt))
+    |> Sequence.to_list
+
+  let build tstop dt graph_specs space =
+    let time = time_wave tstop dt in
+    { tstop = tstop
+    ; dt = dt
+    ; time = time
+    ; graph = Graph.build graph_specs
+    ; agonist = Diffusion.get_profile space time
+    }
+
+  let set_agonist rig space =
+    { rig with agonist = Diffusion.get_profile space rig.time }
+
+  let run rig =
+    let flows = Graph.get_flows rig.graph in
+    let init = [ Graph.init_state rig.graph ] in
+    let step' = Graph.step rig.dt rig.graph.edges flows in
+    let f recs agon = List.hd_exn recs |> step' agon |> fun s -> s :: recs in
+    List.fold_left ~init ~f rig.agonist
 end
