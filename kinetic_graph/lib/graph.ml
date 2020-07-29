@@ -8,6 +8,7 @@ module Edge = struct
            ; sens : float option
            }
 
+  (* Delta along edge as a function of state, time, and maybe agoinst. *)
   let get_flow { from = a; rate = r; sens = sens; _ } =
     match sens with
     | None -> fun state dt _ ->
@@ -47,21 +48,23 @@ module Graph = struct
   let get_flows { edges = edges; _ } =
     edges |> List.map ~f:Edge.get_flow
 
-  let shifts dt agonist flows state =
+  (* Calculate delta along each edge for current time step. *)
+  let commit dt agonist flows state =
     List.map ~f:(fun f -> f state dt agonist) flows
 
+  (* Move value along edges, sub from node A, add to node B. *)
   let apply edges state deltas =
     let updater d = function
       | None -> 0.
       | Some s -> s +. d |> Float.clamp_exn ~min:0. ~max:1. in
     let do_shift m (e : Edge.t) d =
       Map.update m e.dest ~f:(updater d)
-      |> fun m -> Map.update m e.from ~f:(updater ((-1.) *. d)) in
+      |> fun m -> Map.update m e.from ~f:(updater (-.d)) in
     List.zip_exn edges deltas
     |> List.fold_left ~init:state ~f:(fun m (e, d) -> do_shift m e d)
 
   let step dt edges flows agonist state =
-    shifts dt agonist flows state
+    commit dt agonist flows state
     |> apply edges state
 end
 
@@ -97,6 +100,7 @@ module Diffusion = struct
     let y = Float.exp ((-.r) **. 2. /. (4. *. d)) in
     x *. y
 
+  (* Temporal profile of agonist concentration. *)
   let get_profile space_spec time =
     let calc = match space_spec with
       | TwoD spec -> calc2D spec
