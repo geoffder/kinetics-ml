@@ -108,6 +108,12 @@ module Diffusion = struct
     List.map ~f:calc time
 end
 
+module type BuildSpec = sig
+  val tstop : float
+  val dt : float
+  val spec : Graph.specs
+end
+
 module Rig = struct
   type t = { tstop : float
            ; dt : float
@@ -130,6 +136,15 @@ module Rig = struct
     ; agonist = Diffusion.get_profile space time
     }
 
+  let build' (module B : BuildSpec) space =
+    let time = time_wave B.tstop B.dt in
+    { tstop = B.tstop
+    ; dt = B.dt
+    ; time = time
+    ; graph = Graph.build B.spec
+    ; agonist = Diffusion.get_profile space time
+    }
+
   let set_agonist rig space =
     { rig with agonist = Diffusion.get_profile space rig.time }
 
@@ -139,4 +154,26 @@ module Rig = struct
     let step' = Graph.step rig.dt rig.graph.edges flows in
     let f recs agon = List.hd_exn recs |> step' agon |> fun s -> s :: recs in
     List.fold_left ~init ~f rig.agonist
+end
+
+module Gaba : BuildSpec = struct
+  let tstop = 25.0
+  let dt = 0.001
+  let spec : Graph.specs =
+    { names = [ "R"; "AR"; "AR*"; "AD"; "A2R"; "A2R*"; "A2D" ]
+    ; wiring =
+        [ ("R>AR",     8.0,        2)  (* kon * 2 (agonist bind) *)
+        ; ("AR>R",     0.12,       0)  (* koff * 1 (agonist unbind) *)
+        ; ("AR>AD",    0.013,      0)  (* d1 (deactivate) *)
+        ; ("AD>AR",    0.0013,     0)  (* r1 (reactivate) *)
+        ; ("AR>AR*",   0.04,       0)  (* beta1 (channel open) *)
+        ; ("AR*>AR",   0.2,        0)  (* alpha1 (channel close) *)
+        ; ("AR>A2R",   8.0,        1)  (* kon * 1 (agonist bind) *)
+        ; ("A2R>AR",   0.12 *. 2.0, 0)  (* koff * 2 (agonist unbind) *)
+        ; ("A2R>A2D",  1.45,       0)  (* d2 (deactivate) *)
+        ; ("A2D>A2R",  0.1,        0)  (* r2 (reactivate) *)
+        ; ("A2R>A2R*", 3.45,       0)  (* beta2 (channel open) *)
+        ; ("A2R*>A2R", 1.0,        0)  (* alpha2 (channel close) *)
+        ]
+    }
 end
