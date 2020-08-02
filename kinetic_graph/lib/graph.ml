@@ -1,5 +1,9 @@
 open Base
 
+module FloatUtil = struct
+  let  ( *^. ) a b = a *. 10. **. b
+end
+
 module Edge = struct
   type t = { name : string
            ; from : string
@@ -157,6 +161,18 @@ module Rig = struct
 end
 
 module Gaba : BuildSpec = struct
+  (* Petrini et al., 2003
+   * Rate Constants:
+   *   k1 = k2 = 8       [1 / (mM * ms)]
+   *   k-1 = k-2 = 0.12  [1 / ms]
+   *   beta1 = 0.04      [1 / ms]
+   *   alpha1 = 0.2      [1 / ms]
+   *   d1 = 0.013        [1 / ms]
+   *   r1 = 0.0013       [1 / ms]
+   *   beta2 = 3.45      [1 / ms]
+   *   alpha2 = 1        [1 / ms]
+   *   d2 = 1.45         [1 / ms]
+   *   r2 = 0.1          [1 / ms] *)
   let tstop = 25.0
   let dt = 0.001
   let spec : Graph.specs =
@@ -176,4 +192,20 @@ module Gaba : BuildSpec = struct
         ; ("A2R*>A2R", 1.0,        0)  (* alpha2 (channel close) *)
         ]
     }
+end
+
+module Test = struct
+  (* Testing out a run. Not settled on exact architecture that I'd like to
+   * follow here. *)
+  open Diffusion
+  open FloatUtil
+  let test () =
+    TwoD { n_mols = 10000.
+         (* ; coef   = 4. *. 10. **. (-.10.) *)
+         ; coef   = 4. *^. -10.
+         ; height = 20. *. 10. **. (-.9.)
+         ; radius = 0.
+         }
+    |> Rig.build' (module  Gaba : BuildSpec)
+    |> Rig.run
 end
