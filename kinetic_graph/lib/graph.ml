@@ -73,6 +73,8 @@ module Graph = struct
 end
 
 module Diffusion = struct
+  open FloatUtil
+
   type t = float list
 
   type spec2D = { n_mols : float
@@ -90,15 +92,41 @@ module Diffusion = struct
 
   type space = TwoD of spec2D | ThreeD of spec3D
 
+  let glut_2D r = TwoD { n_mols = 4700.
+                       ; coef   = 7.6 *^. -10.
+                       ; height = 20. *^. -9.
+                       ; radius = r
+                       }
+
+  let ach_2D r = TwoD { n_mols = 10000.
+                      ; coef   = 4. *^. -10.
+                      ; height = 20. *^. -9.
+                      ; radius = r
+                      }
+
+  let glut_3D  r = ThreeD { n_mols = 4700.
+                          ; coef   = 7.6 *^. -10.
+                          ; alpha = 0.12
+                          ; lambda = 1.55
+                          ; radius = r
+                          }
+
+  let ach_3D r = ThreeD { n_mols = 10000.
+                        ; coef   = 4. *^. -10.
+                        ; alpha = 0.12
+                        ; lambda = 1.55
+                        ; radius = r
+                        }
+
   let calc2D { n_mols = m; coef = d; height = h; radius = r } = fun t ->
-    let moles = m /. (6.02 *. 10. **. 23.) in
+    let moles = m /. (6.02 *^. 23.) in
     let d' = d *. t in
     let x = moles /. (4. *. h *. Float.pi *. d') in
     let y = Float.exp ((-.r) **. 2. /. (4. *. d')) in
     x *. y
 
   let calc3D { n_mols = m; coef = d; radius = r; alpha = a; lambda = l } = fun t ->
-    let moles = m /. (6.02 *. 10. **. 23.) in
+    let moles = m /. (6.02 *^. 23.) in
     let d' = t *. (d /. l **. 2.) in
     let x = moles /. (8. *. a *. (Float.pi *. d') **. 1.5 ) in
     let y = Float.exp ((-.r) **. 2. /. (4. *. d)) in
@@ -197,15 +225,8 @@ end
 module Test = struct
   (* Testing out a run. Not settled on exact architecture that I'd like to
    * follow here. *)
-  open Diffusion
-  open FloatUtil
   let test () =
-    TwoD { n_mols = 10000.
-         (* ; coef   = 4. *. 10. **. (-.10.) *)
-         ; coef   = 4. *^. -10.
-         ; height = 20. *. 10. **. (-.9.)
-         ; radius = 0.
-         }
+    Diffusion.ach_2D 0.
     |> Rig.build' (module  Gaba : BuildSpec)
     |> Rig.run
 end
