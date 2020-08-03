@@ -2,6 +2,7 @@ open Base
 open Graph_builds
 
 module FloatUtil = struct
+  (* Scientific notation convenience operator. *)
   let  ( *^. ) a b = a *. 10. **. b
 end
 
@@ -152,16 +153,7 @@ module Rig = struct
     |> Sequence.map ~f:(Float.of_int |> Fn.compose (( *. ) dt))
     |> Sequence.to_list
 
-  let build tstop dt graph_specs space =
-    let time = time_wave tstop dt in
-    { tstop = tstop
-    ; dt = dt
-    ; time = time
-    ; graph = Graph.build graph_specs
-    ; agonist = Diffusion.get_profile space time
-    }
-
-  let build' (module B : BuildSpec) space =
+  let build (module B : BuildSpec) space =
     let time = time_wave B.tstop B.dt in
     { tstop = B.tstop
     ; dt = B.dt
@@ -173,12 +165,29 @@ module Rig = struct
   let set_agonist rig space =
     { rig with agonist = Diffusion.get_profile space rig.time }
 
+  (* Convert list of state snapshot Maps into a Map of recording lists. *)
+  let collect_recs l =
+    let init =
+      List.hd_exn l
+      |> Map.keys
+      |> List.map ~f:(fun k -> (k, []))
+      |> Map.of_alist_exn (module String) in
+    let prepend_point p = function
+      | None -> raise (Failure "Incomplete recording set.")
+      | Some data -> p :: data in
+    let collector collection snapshot =
+      let f ~key:k ~data:v c = Map.update c k ~f:(prepend_point v) in
+      Map.fold ~init:collection ~f snapshot in
+    List.fold_left ~init ~f:collector l
+    |> Map.map ~f:List.rev
+
   let run rig =
     let flows = Graph.get_flows rig.graph in
     let init = [ Graph.init_state rig.graph ] in
     let step' = Graph.step rig.dt rig.graph.edges flows in
     let f recs agon = List.hd_exn recs |> step' agon |> fun s -> s :: recs in
     List.fold_left ~init ~f rig.agonist
+    |> collect_recs
 end
 
 module Test = struct
@@ -186,7 +195,7 @@ module Test = struct
    * follow here. *)
   let test () =
     Diffusion.ach_2D 0.
-    (* |> Rig.build' @@ Gaba.make () *)
-    |> Rig.build' @@ Alpha7.make ~on_multi:1. ~desens_div:1. ()
+    (* |> Rig.build @@ Gaba.make () *)
+    |> Rig.build @@ Alpha7.make ~on_multi:1. ~desens_div:1. ()
     |> Rig.run
 end
