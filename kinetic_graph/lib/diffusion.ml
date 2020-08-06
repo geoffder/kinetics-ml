@@ -46,19 +46,19 @@ let ach_3D r = ThreeD { n_mols = 10000.
 
 let calc2D { n_mols = m; coef = d; height = h; radius = r } = fun t ->
   let moles = m /. (6.02 *^. 23.) in
-  let d' = d *. t in
+  let d' = d *. t /. 1000. in
   let x = moles /. (4. *. h *. Float.pi *. d') in
   let y = Float.exp ((-.r) **. 2. /. (4. *. d')) in
   x *. y
 
 let calc3D { n_mols = m; coef = d; radius = r; alpha = a; lambda = l } = fun t ->
   let moles = m /. (6.02 *^. 23.) in
-  let d' = t *. (d /. l **. 2.) in
+  let d' = (d /. l **. 2.) *. t /. 1000. in
   let x = moles /. (8. *. a *. (Float.pi *. d') **. 1.5 ) in
   let y = Float.exp ((-.r) **. 2. /. (4. *. d)) in
   x *. y
 
-(* Temporal profile of agonist concentration. *)
+(* Temporal profile of agonist concentration. Time [s] -> concentration [mM] *)
 let get_profile space_spec time =
   let calc = match space_spec with
     | TwoD spec -> calc2D spec

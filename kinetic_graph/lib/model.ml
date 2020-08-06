@@ -68,10 +68,11 @@ module Graph = struct
 end
 
 module Rig = struct
-  type t = { tstop : float
-           ; dt : float
-           ; time : float list
-           ; graph : Graph.t
+  (* Time in [ms]. Concentration in [mM]. *)
+  type t = { tstop   : float
+           ; dt      : float
+           ; time    : float list
+           ; graph   : Graph.t
            ; agonist : float list
            }
 
