@@ -38,13 +38,13 @@ module Graph = struct
     { nodes = nodes ; edges = List.map ~f:Edge.build specs }
 
   (* First node is assumed to begin with all of the state value. *)
-  let init_state { nodes = nodes; _ } =
+  let init_state { nodes; _ } =
     nodes
     |> List.map ~f:(fun n -> (n, 0.))
     |> Map.of_alist_exn (module String)
     |> Map.set ~key:(List.hd_exn nodes) ~data:1.
 
-  let get_flows { edges = edges; _ } =
+  let get_flows { edges; _ } =
     edges |> List.map ~f:Edge.get_flow
 
   (* Calculate delta along each edge for current time step. *)
@@ -92,7 +92,8 @@ module Rig = struct
   let set_agonist rig space =
     { rig with agonist = Diffusion.get_profile space rig.time }
 
-  (* Convert list of state snapshot Maps into a Map of recording lists. *)
+  (* Convert list of state snapshot Maps into a Map of recording lists.
+   * List is reversed to correct chronological order in process. *)
   let collect_recs l =
     let init =
       List.hd_exn l
@@ -106,7 +107,6 @@ module Rig = struct
       let f ~key:k ~data:v c = Map.update c k ~f:(prepend_point v) in
       Map.fold ~init:collection ~f snapshot in
     List.fold_left ~init ~f:collector l
-    |> Map.map ~f:List.rev
 
   let run rig =
     let flows = Graph.get_flows rig.graph in
@@ -115,14 +115,4 @@ module Rig = struct
     let f recs agon = List.hd_exn recs |> step' agon |> fun s -> s :: recs in
     List.fold_left ~init ~f rig.agonist
     |> collect_recs
-end
-
-module Test = struct
-  (* Testing out a run. Not settled on exact architecture that I'd like to
-   * follow here. *)
-  let test () =
-    Diffusion.ach_2D 0.
-    (* |> Rig.build @@ Gaba.make () *)
-    |> Rig.build @@ Alpha7.make ~on_multi:1. ~desens_div:1. ()
-    |> Rig.run
 end
