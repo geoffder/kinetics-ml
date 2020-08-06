@@ -1,3 +1,3 @@
 (library
  (name kinetic_graph)
- (libraries base owl owl-plplot))
+ (libraries base stdio owl owl-plplot))
