@@ -5,12 +5,13 @@ open Matplotlib
 open Graph_builds
 open Model
 
-(* Consider making PR to add this in. Pretty basic convenience function. *)
+(* Consider making PR to add this in. Pretty basic convenience function.
+ * Think about whether other basic conveniences are missing that would be
+ * easy to contribute. *)
 let subplots ?figsize nrows ncols =
   let fig = Fig.create ?figsize () in
-  let axes =
-    List.range 1 (nrows * ncols)
-    |> List.map ~f:(fun i -> Fig.add_subplot fig ~nrows ~ncols ~index:i) in
+  let add index = Fig.add_subplot fig ~nrows ~ncols ~index in
+  let axes = List.range 1 (nrows * ncols) |> List.map ~f:add in
   fig, axes
 
 (* Add together all open states (any node with an '*'). *)
