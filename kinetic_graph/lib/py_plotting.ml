@@ -36,6 +36,18 @@ let prox_vs_distal title diff builder =
   Fig.suptitle fig title;
   Mpl.show ()
 
-let alpha6_test () =
+let alpha6_pvd () =
   Rig.build @@ Alpha7.make ~on_multi:1. ~desens_div:4. ()
   |> prox_vs_distal "Alpha6" Diffusion.ach_2D
+
+let alpha7_pvd () =
+  Rig.build @@ Alpha7.make ()
+  |> prox_vs_distal "Alpha7" Diffusion.ach_2D
+
+let alpha3_pvd () =
+  Rig.build @@ Alpha3.make ()
+  |> prox_vs_distal "Alpha3" Diffusion.ach_2D
+
+let gaba_pvd () =
+  Rig.build @@ Gaba.make ()
+  |> prox_vs_distal "Gaba" Diffusion.glut_2D
