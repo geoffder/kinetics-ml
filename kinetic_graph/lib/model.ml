@@ -60,7 +60,7 @@ module Graph = struct
       Map.update m e.dest ~f:(updater d)
       |> fun m -> Map.update m e.from ~f:(updater (-.d)) in
     List.zip_exn edges deltas
-    |> List.fold_left ~init:state ~f:(fun m (e, d) -> do_shift m e d)
+    |> List.fold ~init:state ~f:(fun m (e, d) -> do_shift m e d)
 
   let step dt edges flows agonist state =
     commit dt agonist flows state
@@ -107,13 +107,13 @@ module Rig = struct
     let collector collection snapshot =
       let f ~key:k ~data:v c = Map.update c k ~f:(prepend_point v) in
       Map.fold ~init:collection ~f snapshot in
-    List.fold_left ~init ~f:collector l
+    List.fold ~init ~f:collector l
 
   let run rig =
     let flows = Graph.get_flows rig.graph in
     let init = [ Graph.init_state rig.graph ] in
     let step' = Graph.step rig.dt rig.graph.edges flows in
     let f recs agon = List.hd_exn recs |> step' agon |> fun s -> s :: recs in
-    List.fold_left ~init ~f rig.agonist
+    List.fold ~init ~f rig.agonist
     |> collect_recs
 end
