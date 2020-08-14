@@ -1,6 +1,8 @@
 open Base
 
-type graph_spec = { names : string list; wiring : (string * float * int) list }
+type graph_spec = { names : string list
+                  ; wiring : (string * float * int) list
+                  }
 
 module type BuildSpec = sig
   val tstop : float
@@ -81,6 +83,35 @@ module Alpha7 = struct
             ; ("A2D>A2R",  0.026,      0)  (* res   [resensitize] *)
             ; ("A2R>A2R*", 0.0862,     0)  (* beta  [opening]     *)
             ; ("A2R*>A2R", 7.641,      0)  (* alpha [closing]     *)
+            ]
+        }
+    end : BuildSpec)
+end
+
+module Alpha3 = struct
+  (* Coggan et al., 2005
+   * Rate Constants:
+   *    k1 = k2 = 2.3e6   [1 / (M * s)]
+   *    k-1 = k-2 = 84    [1 / s]
+   *    beta = 513        [1 / s]
+   *    alpha = 1000      [1 / s]
+   * kon rates adjusted by 1e6 to [1 / (mM * ms)].
+   * [1 / s] rates adjusted by 1e3 to [1 / ms]. *)
+  let make ?tstop:(tstop=25.0) ?dt:(dt=0.001) () =
+    (module struct
+      let tstop = tstop
+      let dt = dt
+      let kon = 2.3
+      let koff = 0.084
+      let spec : graph_spec =
+        { names = [ "R"; "AR"; "A2R"; "A2R*" ]
+        ; wiring =
+            [ ("R>AR",     kon,        2)  (* k+1   [bind]        *)
+            ; ("AR>R",     koff,       0)  (* k-1   [unbind]      *)
+            ; ("AR>A2R",   kon,        1)  (* k+2   [bind]        *)
+            ; ("A2R>AR",   koff *. 2.0, 0)  (* k-2   [unbind]      *)
+            ; ("A2R>A2R*", 0.513,      0)  (* beta  [opening]     *)
+            ; ("A2R*>A2R", 1.,         0)  (* alpha [closing]     *)
             ]
         }
     end : BuildSpec)
